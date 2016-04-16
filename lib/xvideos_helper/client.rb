@@ -12,7 +12,7 @@ module XvideosHelper
     end
 
     # get movie information according to target
-    def movies_of(target)
+    def movies_of(target = domain)
       begin
         return @crawler.get_data_from(target,'movie')
       rescue Exception => e
