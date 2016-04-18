@@ -38,50 +38,62 @@ private
 
     # main crawler
     def parsed_movie_data(data)
-      parsed_data = {}
+      parsed_data = []
       index       = 0
 
       data.search(".thumb-block .thumb-inside").each do |post|
+        data = {}
         begin
           # limit
           break if @movies_limit == index
-          parsed_data[index] = {}
           # thumbnail infomation
           post.search('div[@class="thumb"]/a').each do |a|
-            parsed_data[index]['movie_page_url'] = "#{@domain}#{a.attribute('href').value}"
-            parsed_data[index]['movie_thumnail_url'] = "#{a.children.attribute('src').value}"
+            data['movie_page_url'] = "#{@domain}#{a.attribute('href').value}"
+            data['movie_thumnail_url'] = "#{a.children.attribute('src').value}"
           end
 
           # if script tag is contained
           post.search('script').each do |elm|
-            parsed_data[index]['movie_page_url'] = @domain + (elm.children[0].content.match(/href="(.+?)">/))[1]
-            parsed_data[index]['movie_thumnail_url'] = (elm.children[0].content.match(/src="(.+?)"/))[1]
+            data['movie_page_url'] = @domain + (elm.children[0].content.match(/href="(.+?)">/))[1]
+            data['movie_thumnail_url'] = (elm.children[0].content.match(/src="(.+?)"/))[1]
           end
 
           # movie_id
-          parsed_data[index]['movie_id'] = parsed_data[index]['movie_page_url'].match(/\/video(\d+)\/.*/)[1]
+          data['movie_id'] = data['movie_page_url'].match(/\/video(\d+)\/.*/)[1].to_i
 
           # iframe url
-          parsed_data[index]['movie_url'] = @iframe_url + (parsed_data[index]['movie_page_url'].match(/\/video(\d+)\/.*/))[1]
+          data['movie_url'] = @iframe_url + (data['movie_page_url'].match(/\/video(\d+)\/.*/))[1]
 
           # description
-          parsed_data[index]['description'] = ''
+          data['description'] = ''
           post.search('p/a').each do |a|
-            parsed_data[index]['description'] = a.inner_text
+            data['description'] = a.inner_text
           end
 
           # metadata
           post.search('p[@class="metadata"]/span[@class="bg"]').each do |span|
             text = span.inner_text.gsub(/(\t|\s|\n)+/,'')
-            parsed_data[index]['duration'] = (text.match(/\(.+\)/))[0]
-            parsed_data[index]['movie_quality'] = text.sub(/\(.+\)/,'')
+            data['duration'] = duration_to_min((text.match(/\(.+\)/))[0])
+            data['movie_quality'] = quality_to_per(text.sub(/\(.+\)/,''))
           end
           index += 1
+          parsed_data << data
         rescue Exception => e
           raise e
         end
       end
       return parsed_data
+    end
+
+    # e.g. (1h13min)
+    def duration_to_min(duration_str)
+      match = duration_str.match(/((?<hour>\d+)h)*((?<min>\d+)min)/)
+      match[:hour].to_i * 60 + match[:min].to_i
+    end
+
+    # e.g. Pornquality:87%
+    def quality_to_per(quality_str)
+      quality_str.match(/\d+/)[0].to_i
     end
 
     # tag list crawler
